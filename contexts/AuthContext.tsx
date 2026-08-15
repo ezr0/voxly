@@ -24,7 +24,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+    const firebaseAuth = auth;
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (nextUser) => {
       if (nextUser) {
         setUser(nextUser);
         setError(null);
@@ -33,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        await signInAnonymously(auth);
+        await signInAnonymously(firebaseAuth);
       } catch {
         setError('Could not start guest session. Check your Firebase auth settings.');
         setIsLoading(false);
