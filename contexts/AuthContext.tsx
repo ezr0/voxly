@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { User, onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
 
 import { auth, hasFirebaseConfig } from '@/lib/firebase';
@@ -12,7 +12,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     if (!auth) return;
 
     await signOut(auth);
     await signInAnonymously(auth);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       refreshSession,
     }),
-    [error, isLoading, user],
+    [error, isLoading, refreshSession, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

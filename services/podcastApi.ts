@@ -52,5 +52,7 @@ export function fetchDiscoverPodcasts() {
 }
 
 export function searchPodcasts(term: string) {
-  return fetchPodcasts(term.trim());
+  const trimmed = term.trim();
+  if (!trimmed) return Promise.resolve([]);
+  return fetchPodcasts(trimmed);
 }
