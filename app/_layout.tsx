@@ -8,7 +8,9 @@ import { AuthScreen } from "@/components/AuthScreen";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { DownloadProvider } from "@/contexts/DownloadContext";
 import { LibraryProvider } from "@/contexts/LibraryContext";
+import { NewEpisodesProvider } from "@/contexts/NewEpisodesContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import { AppThemeProvider } from "@/contexts/ThemeContext";
 
@@ -53,9 +55,13 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <LibraryProvider>
-          <PlayerProvider>
-            <AppGate />
-          </PlayerProvider>
+          <NewEpisodesProvider>
+            <DownloadProvider>
+              <PlayerProvider>
+                <AppGate />
+              </PlayerProvider>
+            </DownloadProvider>
+          </NewEpisodesProvider>
         </LibraryProvider>
       </AuthProvider>
     </ThemeProvider>

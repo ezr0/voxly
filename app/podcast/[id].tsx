@@ -13,7 +13,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
+import { useDownloads } from "@/contexts/DownloadContext";
 import { useLibrary } from "@/contexts/LibraryContext";
+import { useNewEpisodes } from "@/contexts/NewEpisodesContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchPodcastDetails } from "@/services/podcastApi";
 import { Episode, Podcast } from "@/types/podcast";
@@ -37,6 +39,9 @@ export default function PodcastDetailScreen() {
   const { savedIds, toggleSaved, error: libraryError } = useLibrary();
   const { currentEpisode, isPlaying, playEpisode, togglePlayPause } =
     usePlayer();
+  const { getDownloadState, downloadEpisode, deleteDownload, getPlaybackUri } =
+    useDownloads();
+  const { markPodcastSeen } = useNewEpisodes();
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +55,13 @@ export default function PodcastDetailScreen() {
         setPodcast(result.podcast);
         setEpisodes(result.episodes);
         setError(null);
+
+        const latest = [...result.episodes].sort(
+          (a, b) =>
+            new Date(b.releaseDate).getTime() -
+            new Date(a.releaseDate).getTime(),
+        )[0];
+        if (latest) markPodcastSeen(numericId, latest.id);
       } catch {
         if (!cancelled) setError("Could not load this podcast right now.");
       } finally {
@@ -61,7 +73,7 @@ export default function PodcastDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, markPodcastSeen]);
 
   const isSaved = podcast ? savedIds.has(podcast.id) : false;
 
@@ -126,6 +138,7 @@ export default function PodcastDetailScreen() {
         }
         renderItem={({ item }) => {
           const isCurrent = currentEpisode?.id === item.id;
+          const downloadState = getDownloadState(item);
 
           return (
             <View style={styles.episodeCard}>
@@ -138,8 +151,26 @@ export default function PodcastDetailScreen() {
                 </Text>
                 <Text style={styles.episodeMeta}>
                   {formatDuration(item.durationMillis)}
+                  {downloadState.status === "downloaded" ? " · Downloaded" : ""}
                 </Text>
               </View>
+              <Pressable
+                style={styles.downloadButton}
+                onPress={() =>
+                  downloadState.status === "downloaded"
+                    ? deleteDownload(item)
+                    : downloadEpisode(item)
+                }
+                disabled={downloadState.status === "downloading"}
+              >
+                <Text style={styles.downloadButtonText}>
+                  {downloadState.status === "downloading"
+                    ? `${Math.round(downloadState.progress * 100)}%`
+                    : downloadState.status === "downloaded"
+                      ? "⛔"
+                      : "⬇"}
+                </Text>
+              </Pressable>
               <Pressable
                 style={[
                   styles.episodePlayButton,
@@ -148,7 +179,12 @@ export default function PodcastDetailScreen() {
                     : null,
                 ]}
                 onPress={() =>
-                  isCurrent ? togglePlayPause() : playEpisode(item)
+                  isCurrent
+                    ? togglePlayPause()
+                    : playEpisode({
+                        ...item,
+                        audioUrl: getPlaybackUri(item),
+                      })
                 }
               >
                 <Text style={styles.episodePlayButtonText}>
@@ -267,6 +303,19 @@ function createStyles(colors: (typeof Colors)["light"]) {
     episodeMeta: {
       color: colors.subtext,
       fontSize: 11,
+    },
+    downloadButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    downloadButtonText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.tint,
     },
     episodePlayButton: {
       width: 42,

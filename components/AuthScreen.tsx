@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { statusCodes } from "@react-native-google-signin/google-signin";
+
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,7 +47,13 @@ function friendlyAuthError(err: unknown): string {
 
 export function AuthScreen() {
   const colors = Colors[useColorScheme()];
-  const { signIn, signUp, signInAsGuest, error: authError } = useAuth();
+  const {
+    signIn,
+    signUp,
+    signInAsGuest,
+    signInWithGoogle,
+    error: authError,
+  } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [displayName, setDisplayName] = useState("");
@@ -93,6 +101,22 @@ export function AuthScreen() {
     } catch (err) {
       console.error("Failed to start guest session", err);
       setFormError(friendlyAuthError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const continueWithGoogle = async () => {
+    setIsSubmitting(true);
+    setFormError(null);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code !== statusCodes.SIGN_IN_CANCELLED) {
+        console.error("Failed to sign in with Google", err);
+        setFormError("Could not sign in with Google. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -189,6 +213,14 @@ export function AuthScreen() {
             )}
           </Pressable>
 
+          <Pressable
+            style={styles.googleButton}
+            onPress={continueWithGoogle}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </Pressable>
+
           <Pressable onPress={continueAsGuest} disabled={isSubmitting}>
             <Text style={styles.guestText}>Continue as guest</Text>
           </Pressable>
@@ -277,6 +309,20 @@ function createStyles(colors: (typeof Colors)["light"]) {
       fontWeight: "600",
       marginTop: 8,
       padding: 8,
+    },
+    googleButton: {
+      borderRadius: 14,
+      paddingVertical: 13,
+      alignItems: "center",
+      marginTop: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    googleButtonText: {
+      color: colors.text,
+      fontWeight: "700",
+      fontSize: 15,
     },
   });
 }

@@ -1,8 +1,14 @@
 import {
+    GoogleSignin,
+    isSuccessResponse,
+} from "@react-native-google-signin/google-signin";
+import {
+    GoogleAuthProvider,
     User,
     createUserWithEmailAndPassword,
     onAuthStateChanged,
     signInAnonymously,
+    signInWithCredential,
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
@@ -20,6 +26,12 @@ import {
 
 import { auth, db, hasFirebaseConfig } from "@/lib/firebase";
 
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+if (googleWebClientId) {
+  GoogleSignin.configure({ webClientId: googleWebClientId });
+}
+
 type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
@@ -31,6 +43,7 @@ type AuthContextValue = {
     displayName: string,
   ) => Promise<void>;
   signInAsGuest: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
 };
 
@@ -95,6 +108,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInAnonymously(auth);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    if (!auth) throw new Error("Firebase is not configured.");
+    if (!googleWebClientId) {
+      throw new Error(
+        "Google Sign-In is not set up yet. Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.",
+      );
+    }
+
+    await GoogleSignin.hasPlayServices();
+    const response = await GoogleSignin.signIn();
+
+    if (!isSuccessResponse(response) || !response.data.idToken) {
+      throw new Error("Google sign-in did not return an ID token.");
+    }
+
+    const credential = GoogleAuthProvider.credential(response.data.idToken);
+    await signInWithCredential(auth, credential);
+  }, []);
+
   const signOutUser = useCallback(async () => {
     if (!auth) return;
     await signOut(auth);
@@ -108,9 +140,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signInAsGuest,
+      signInWithGoogle,
       signOutUser,
     }),
-    [error, isLoading, signIn, signInAsGuest, signOutUser, signUp, user],
+    [
+      error,
+      isLoading,
+      signIn,
+      signInAsGuest,
+      signInWithGoogle,
+      signOutUser,
+      signUp,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

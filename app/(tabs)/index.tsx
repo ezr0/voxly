@@ -1,22 +1,39 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { PodcastGridCard } from "@/components/PodcastGridCard";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import { useLibrary } from "@/contexts/LibraryContext";
+import { useNewEpisodes } from "@/contexts/NewEpisodesContext";
 import { fetchDiscoverPodcasts, searchPodcasts } from "@/services/podcastApi";
 import { Podcast } from "@/types/podcast";
+
+type GenreSection = { genre: string; data: Podcast[] };
+
+function groupByGenre(podcasts: Podcast[]): GenreSection[] {
+  const map = new Map<string, Podcast[]>();
+
+  for (const podcast of podcasts) {
+    const genre = podcast.genres[0] || "Podcasts";
+    if (!map.has(genre)) map.set(genre, []);
+    map.get(genre)!.push(podcast);
+  }
+
+  return Array.from(map.entries()).map(([genre, data]) => ({ genre, data }));
+}
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -27,6 +44,7 @@ export default function DiscoverScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { savedIds, toggleSaved, error: libraryError } = useLibrary();
+  const { hasNewEpisode } = useNewEpisodes();
 
   const loadDiscover = async () => {
     setIsLoading(true);
@@ -45,15 +63,16 @@ export default function DiscoverScreen() {
     loadDiscover();
   }, []);
 
-  const runSearch = async () => {
-    if (!query.trim()) {
+  const runSearch = async (text?: string) => {
+    const term = (text ?? query).trim();
+    if (!term) {
       await loadDiscover();
       return;
     }
 
     setIsLoading(true);
     try {
-      const items = await searchPodcasts(query);
+      const items = await searchPodcasts(term);
       setPodcasts(items);
       setError(null);
     } catch {
@@ -63,92 +82,89 @@ export default function DiscoverScreen() {
     }
   };
 
+  const isSearching = query.trim().length > 0;
+  const sections = useMemo(() => groupByGenre(podcasts), [podcasts]);
+
   const heading = useMemo(
     () =>
-      query.trim()
-        ? `Results for “${query.trim()}”`
-        : "Discover fresh podcasts",
-    [query],
+      isSearching ? `Results for “${query.trim()}”` : "Discover fresh podcasts",
+    [isSearching, query],
   );
+
+  const renderCard = (item: Podcast, width?: number | `${number}%`) => {
+    const isSaved = savedIds.has(item.id);
+
+    return (
+      <PodcastGridCard
+        key={item.id}
+        podcast={item}
+        colors={colors}
+        width={width}
+        onPress={() => router.push(`/podcast/${item.id}`)}
+        showNewBadge={isSaved && hasNewEpisode(item.id)}
+        actionLabel={isSaved ? "Saved" : "Save"}
+        actionActive={isSaved}
+        onAction={() => toggleSaved(item)}
+      />
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <FlatList
+      <ScrollView
         contentContainerStyle={styles.content}
-        data={podcasts}
-        keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={
-          <View style={styles.headerWrap}>
-            <Image
-              source={require("@/assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.headerWrap}>
+          <Image
+            source={require("@/assets/images/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.subtitle}>
+            Ad-free podcast listening with a clean, modern flow.
+          </Text>
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search podcasts"
+              placeholderTextColor={colors.subtext}
+              returnKeyType="search"
+              onSubmitEditing={() => runSearch()}
+              value={query}
+              onChangeText={setQuery}
             />
-            <Text style={styles.subtitle}>
-              Ad-free podcast listening with a clean, modern flow.
-            </Text>
-            <View style={styles.searchRow}>
-              <TextInput
-                style={styles.input}
-                placeholder="Search podcasts"
-                placeholderTextColor={colors.subtext}
-                returnKeyType="search"
-                onSubmitEditing={runSearch}
-                value={query}
-                onChangeText={setQuery}
-              />
-              <Pressable onPress={runSearch} style={styles.searchButton}>
-                <Text style={styles.searchButtonText}>Go</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.sectionTitle}>{heading}</Text>
-          </View>
-        }
-        ListEmptyComponent={
-          !isLoading ? (
-            <Text style={styles.emptyText}>No podcasts found yet.</Text>
-          ) : null
-        }
-        renderItem={({ item }) => {
-          const isSaved = savedIds.has(item.id);
-
-          return (
-            <Pressable
-              style={styles.card}
-              onPress={() => router.push(`/podcast/${item.id}`)}
-            >
-              <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
-              <View style={styles.cardBody}>
-                <Text numberOfLines={2} style={styles.cardTitle}>
-                  {item.title}
-                </Text>
-                <Text numberOfLines={1} style={styles.cardAuthor}>
-                  {item.author}
-                </Text>
-                <Text numberOfLines={1} style={styles.cardMeta}>
-                  {item.genres.join(" · ") || "Podcast"}
-                </Text>
-              </View>
-              <Pressable
-                onPress={(event) => {
-                  event.stopPropagation();
-                  toggleSaved(item);
-                }}
-                style={[styles.saveButton, isSaved ? styles.savedButton : null]}
-              >
-                <Text
-                  style={[
-                    styles.saveButtonText,
-                    isSaved ? styles.savedButtonText : null,
-                  ]}
-                >
-                  {isSaved ? "Saved" : "Save"}
-                </Text>
-              </Pressable>
+            <Pressable onPress={() => runSearch()} style={styles.searchButton}>
+              <Text style={styles.searchButtonText}>Go</Text>
             </Pressable>
-          );
-        }}
-      />
+          </View>
+          <Text style={styles.sectionTitle}>{heading}</Text>
+        </View>
+
+        {!isLoading && podcasts.length === 0 ? (
+          <Text style={styles.emptyText}>No podcasts found yet.</Text>
+        ) : null}
+
+        {isSearching ? (
+          <View style={styles.grid}>
+            {podcasts.map((item) => renderCard(item, "48%"))}
+          </View>
+        ) : (
+          sections.map((section) => (
+            <View key={section.genre} style={styles.genreSection}>
+              <Text style={styles.genreTitle}>{section.genre}</Text>
+              <FlatList
+                data={section.data}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={styles.genreRow}
+                renderItem={({ item }) => renderCard(item, 140)}
+              />
+            </View>
+          ))
+        )}
+      </ScrollView>
       {isLoading ? (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.tint} />
@@ -171,6 +187,7 @@ function createStyles(colors: (typeof Colors)["light"]) {
     content: {
       padding: 20,
       gap: 12,
+      paddingBottom: 40,
     },
     headerWrap: {
       gap: 12,
@@ -218,52 +235,23 @@ function createStyles(colors: (typeof Colors)["light"]) {
       fontWeight: "700",
       color: colors.text,
     },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      padding: 12,
+    grid: {
       flexDirection: "row",
-      gap: 12,
-      alignItems: "center",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      gap: 14,
     },
-    artwork: {
-      width: 64,
-      height: 64,
-      borderRadius: 12,
-      backgroundColor: colors.border,
+    genreSection: {
+      gap: 10,
+      marginBottom: 8,
     },
-    cardBody: {
-      flex: 1,
-      gap: 3,
-    },
-    cardTitle: {
+    genreTitle: {
+      fontSize: 16,
+      fontWeight: "700",
       color: colors.text,
-      fontWeight: "700",
-      fontSize: 15,
     },
-    cardAuthor: {
-      color: colors.subtext,
-      fontSize: 13,
-    },
-    cardMeta: {
-      color: colors.subtext,
-      fontSize: 12,
-    },
-    saveButton: {
-      borderRadius: 12,
-      backgroundColor: colors.border,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    saveButtonText: {
-      color: colors.tint,
-      fontWeight: "700",
-    },
-    savedButton: {
-      backgroundColor: colors.tint,
-    },
-    savedButtonText: {
-      color: "#FFFFFF",
+    genreRow: {
+      gap: 12,
     },
     loadingOverlay: {
       position: "absolute",

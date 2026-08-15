@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ezr0.voxly"
+      "package": "com.ezr0.voxly",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -40,7 +41,9 @@
         {
           "enableBackgroundPlayback": true
         }
-      ]
+      ],
+      "expo-speech-recognition",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
