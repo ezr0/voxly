@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ type LibraryContextValue = {
   savedPodcasts: Podcast[];
   savedIds: Set<number>;
   isLoading: boolean;
+  error: string | null;
   savePodcast: (podcast: Podcast) => Promise<void>;
   unsavePodcast: (podcastId: number) => Promise<void>;
   toggleSaved: (podcast: Podcast) => Promise<void>;
@@ -20,6 +21,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [savedPodcasts, setSavedPodcasts] = useState<Podcast[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!db || !user) {
@@ -29,17 +31,25 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
 
     const ref = collection(db, 'users', user.uid, 'library');
-    const unsubscribe = onSnapshot(query(ref, orderBy('savedAt', 'desc')), (snapshot) => {
-      setSavedPodcasts(snapshot.docs.map((item) => item.data() as Podcast));
-      setIsLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      query(ref, orderBy('savedAt', 'desc')),
+      (snapshot) => {
+        setSavedPodcasts(snapshot.docs.map((item) => item.data() as Podcast));
+        setError(null);
+        setIsLoading(false);
+      },
+      () => {
+        setError('Could not sync your library right now.');
+        setIsLoading(false);
+      },
+    );
 
     return unsubscribe;
   }, [user]);
 
   const savedIds = useMemo(() => new Set(savedPodcasts.map((podcast) => podcast.id)), [savedPodcasts]);
 
-  const savePodcast = async (podcast: Podcast) => {
+  const savePodcast = useCallback(async (podcast: Podcast) => {
     if (!db || !user) return;
 
     const ref = doc(db, 'users', user.uid, 'library', String(podcast.id));
@@ -47,33 +57,34 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       ...podcast,
       savedAt: Date.now(),
     });
-  };
+  }, [user]);
 
-  const unsavePodcast = async (podcastId: number) => {
+  const unsavePodcast = useCallback(async (podcastId: number) => {
     if (!db || !user) return;
 
     await deleteDoc(doc(db, 'users', user.uid, 'library', String(podcastId)));
-  };
+  }, [user]);
 
-  const toggleSaved = async (podcast: Podcast) => {
+  const toggleSaved = useCallback(async (podcast: Podcast) => {
     if (savedIds.has(podcast.id)) {
       await unsavePodcast(podcast.id);
       return;
     }
 
     await savePodcast(podcast);
-  };
+  }, [savePodcast, savedIds, unsavePodcast]);
 
   const value = useMemo(
     () => ({
       savedPodcasts,
       savedIds,
       isLoading,
+      error,
       savePodcast,
       unsavePodcast,
       toggleSaved,
     }),
-    [isLoading, savedIds, savedPodcasts],
+    [error, isLoading, savePodcast, savedIds, savedPodcasts, toggleSaved, unsavePodcast],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
