@@ -8,3 +8,15 @@ export type Podcast = {
   description: string;
   savedAt?: number;
 };
+
+export type Episode = {
+  id: number;
+  title: string;
+  description: string;
+  audioUrl: string;
+  artworkUrl: string;
+  releaseDate: string;
+  durationMillis: number;
+  podcastId: number;
+  podcastTitle: string;
+};

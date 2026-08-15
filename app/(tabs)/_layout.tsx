@@ -1,36 +1,38 @@
-import { SymbolView } from 'expo-symbols';
-import { Tabs } from 'expo-router';
+import { Tabs } from "expo-router";
+import { SymbolView } from "expo-symbols";
+
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors from "@/constants/Colors";
 
 export default function TabLayout() {
+  const colors = Colors[useColorScheme()];
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#5B4CF0',
-        tabBarInactiveTintColor: '#96A0B5',
+        headerShown: false,
+        tabBarActiveTintColor: colors.tint,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
           borderTopWidth: 0,
           elevation: 0,
           height: 84,
           paddingBottom: 12,
           paddingTop: 12,
+          backgroundColor: colors.card,
         },
-        headerStyle: {
-          backgroundColor: '#F5F7FF',
-        },
-        headerTitleStyle: {
-          fontWeight: '700',
-        },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Discover',
+          title: "Discover",
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'sparkles',
-                android: 'manage_search',
-                web: 'search',
+                ios: "sparkles",
+                android: "manage_search",
+                web: "search",
               }}
               tintColor={color}
               size={24}
@@ -41,13 +43,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Library',
+          title: "Library",
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'books.vertical',
-                android: 'library_books',
-                web: 'book',
+                ios: "books.vertical",
+                android: "library_books",
+                web: "book",
               }}
               tintColor={color}
               size={24}
@@ -58,13 +60,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
-                ios: 'person.crop.circle',
-                android: 'person',
-                web: 'person',
+                ios: "person.crop.circle",
+                android: "person",
+                web: "person",
               }}
               tintColor={color}
               size={24}

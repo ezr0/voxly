@@ -1,24 +1,28 @@
-import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { useFonts } from "expo-font";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/components/useColorScheme';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { LibraryProvider } from '@/contexts/LibraryContext';
+import { AuthScreen } from "@/components/AuthScreen";
+import { MiniPlayer } from "@/components/MiniPlayer";
+import { useColorScheme } from "@/components/useColorScheme";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LibraryProvider } from "@/contexts/LibraryContext";
+import { PlayerProvider } from "@/contexts/PlayerContext";
+import { AppThemeProvider } from "@/contexts/ThemeContext";
 
-export { ErrorBoundary } from 'expo-router';
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
+  initialRouteName: "(tabs)",
 };
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
@@ -35,22 +39,52 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AppThemeProvider>
+      <RootLayoutNav />
+    </AppThemeProvider>
+  );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <LibraryProvider>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </Stack>
+          <PlayerProvider>
+            <AppGate />
+          </PlayerProvider>
         </LibraryProvider>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function AppGate() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  return (
+    <>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <Stack.Screen name="podcast/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="player"
+          options={{ presentation: "modal", headerShown: false }}
+        />
+      </Stack>
+      <MiniPlayer />
+    </>
   );
 }
