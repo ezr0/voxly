@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { usePodcastLibrary } from '@/hooks/usePodcastLibrary';
+import { useLibrary } from '@/contexts/LibraryContext';
 import { fetchDiscoverPodcasts, searchPodcasts } from '@/services/podcastApi';
 import { Podcast } from '@/types/podcast';
 
@@ -20,7 +20,7 @@ export default function DiscoverScreen() {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { savedIds, toggleSaved } = usePodcastLibrary();
+  const { savedIds, toggleSaved } = useLibrary();
 
   const loadDiscover = async () => {
     setIsLoading(true);

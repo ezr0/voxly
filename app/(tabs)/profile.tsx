@@ -1,12 +1,12 @@
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { usePodcastLibrary } from '@/hooks/usePodcastLibrary';
+import { useLibrary } from '@/contexts/LibraryContext';
 import { hasFirebaseConfig } from '@/lib/firebase';
 
 export default function ProfileScreen() {
   const { user, isLoading, error, refreshSession } = useAuth();
-  const { savedPodcasts } = usePodcastLibrary();
+  const { savedPodcasts } = useLibrary();
 
   return (
     <SafeAreaView style={styles.safeArea}>

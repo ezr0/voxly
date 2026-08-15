@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshSession = useCallback(async () => {
     if (!auth) return;
 
+    setIsLoading(true);
     await signOut(auth);
-    await signInAnonymously(auth);
   }, []);
 
   const value = useMemo(

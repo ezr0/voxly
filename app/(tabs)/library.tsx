@@ -1,9 +1,9 @@
 import { FlatList, Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { usePodcastLibrary } from '@/hooks/usePodcastLibrary';
+import { useLibrary } from '@/contexts/LibraryContext';
 
 export default function LibraryScreen() {
-  const { isLoading, savedPodcasts } = usePodcastLibrary();
+  const { isLoading, savedPodcasts } = useLibrary();
 
   return (
     <SafeAreaView style={styles.safeArea}>
